@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>体育ストップウォッチ</title>
+<style>
+:root{--bg:#0e1a2b;--panel:#16263d;--line:#2c4466;--text:#fff;--sub:#a9bad1;--go:#22c55e;--goal:#ff7a1a;--stop:#e5484d;--blue:#38bdf8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:14px;font-weight:800;color:#fff;background:#2c4466;padding:12px 18px;min-height:52px}
+button:active{transform:scale(.97)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+button:disabled{opacity:.35;cursor:not-allowed}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:2px solid var(--line)}
+header label{font-weight:800;font-size:18px}
+#event{font-size:24px;font-weight:800;width:220px;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:#0b1524;user-select:text}
+.sp{flex:1}
+.hbtn{background:#2c4466;font-size:18px}
+#sync{font-size:15px;color:var(--sub)}
+#sync.ok{color:var(--go)}#sync.ng{color:#ffb4b4}
+main{flex:1;display:grid;grid-template-columns:1.1fr 1fr;gap:14px;padding:14px;min-height:0}
+section{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;min-height:0}
+h2{margin:0 0 10px;font-size:20px}
+#timer{font-variant-numeric:tabular-nums;font-weight:900;text-align:center;font-size:clamp(56px,11vw,150px);line-height:1.05;color:var(--blue);padding:6px 0 10px}
+#timer.run{color:#fff}
+.row{display:flex;gap:12px}.row>button{flex:1}
+#start{background:var(--go);color:#04210f;font-size:26px;min-height:76px}
+#reset{background:var(--stop);font-size:22px;max-width:34%}
+#goal{background:var(--goal);color:#2a1100;font-size:clamp(32px,5vw,56px);min-height:130px;margin:12px 0;width:100%;border-radius:20px}
+#pending{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:90px}
+.pi{display:flex;align-items:center;gap:10px;background:#0b1524;border:2px solid var(--line);border-radius:14px;padding:10px}
+.pi .t{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;min-width:150px}
+.pi select{flex:1;min-width:0;font-size:20px;padding:12px;border-radius:12px;border:2px solid var(--line);background:#16263d}
+.pi .reg{background:var(--go);color:#04210f;font-size:20px}
+.pi .x{background:transparent;color:var(--sub);padding:8px 12px;min-height:44px;font-size:22px}
+.empty{color:var(--sub);text-align:center;padding:18px;font-size:17px}
+.tools{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+#copy{background:var(--blue);color:#032033;font-size:19px;flex:1}
+#clear{background:var(--stop);font-size:16px}
+#list{flex:1;overflow:auto;min-height:0}
+table{width:100%;border-collapse:collapse;font-size:18px}
+th{position:sticky;top:0;background:var(--panel);text-align:left;color:var(--sub);font-size:15px;padding:6px;border-bottom:2px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line)}
+td.tm{font-weight:900;font-size:21px;font-variant-numeric:tabular-nums}
+td button{background:transparent;color:var(--sub);min-height:40px;padding:4px 10px;font-size:20px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+.modal.on{display:flex}
+.box{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:20px;width:min(640px,100%);max-height:94vh;overflow:auto}
+.box textarea,.box input{width:100%;border-radius:12px;border:2px solid var(--line);background:#0b1524;padding:12px;font-size:18px;user-select:text}
+.box textarea{height:46vh;font-family:ui-monospace,monospace}
+.box p{color:var(--sub);margin:6px 0 12px;font-size:15px;line-height:1.5}
+.box .row{margin-top:14px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#fff;color:#0e1a2b;font-weight:800;padding:12px 22px;border-radius:30px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+#toast.on{opacity:1}
+@media (max-width:820px){main{grid-template-columns:1fr;overflow:auto}#reset{max-width:none}}
+</style>
+</head>
+<body>
+<header>
+  <label for="event">本日の種目</label>
+  <input id="event" list="events" value="50m走">
+  <datalist id="events"><option value="50m走"><option value="100m走"><option value="シャトルラン"><option value="1000m走"></datalist>
+  <span class="sp"></span>
+  <span id="sync"></span>
+  <button class="hbtn" id="bRoster">名簿登録</button>
+  <button class="hbtn" id="bGas">GAS設定</button>
+</header>
+
+<main>
+  <section>
+    <div id="timer">0:00.000</div>
+    <div class="row">
+      <button id="start">一斉スタート</button>
+      <button id="reset">リセット</button>
+    </div>
+    <button id="goal" disabled>ゴール（タップ）</button>
+    <h2>計測したタイム</h2>
+    <div id="pending"></div>
+  </section>
+
+  <section>
+    <h2>過去の記録（<span id="cnt">0</span>件）</h2>
+    <div class="tools">
+      <button id="copy">スプレッドシート用にコピー</button>
+      <button id="clear">全データ消去</button>
+    </div>
+    <div id="list"></div>
+  </section>
+</main>
+
+<div class="modal" id="mRoster"><div class="box">
+  <h2>名簿登録</h2>
+  <p>1行に1人、「出席番号 名前」の形で入力します（区切りは空白・タブ・カンマ）。<br>例：1 山田太郎</p>
+  <textarea id="rosterText" placeholder="1 山田太郎&#10;2 佐藤花子"></textarea>
+  <div class="row"><button id="rCancel">閉じる</button><button id="rSave" style="background:var(--go);color:#04210f">名簿を保存</button></div>
+</div></div>
+
+<div class="modal" id="mGas"><div class="box">
+  <h2>GAS設定</h2>
+  <p>スプレッドシートに紐づけたGoogle Apps ScriptのWebアプリURLを貼り付けます。空欄にすると送信しません。記録は必ずこの端末にも保存されます。</p>
+  <input id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+  <div class="row"><button id="gCancel">閉じる</button><button id="gSave" style="background:var(--go);color:#04210f">URLを保存</button></div>
+</div></div>
+<div id="toast"></div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+};
+let roster=LS.get('pe_roster',[]);      // [{no,name}]
+let records=LS.get('pe_records',[]);    // [{id,date,event,no,name,time}]
+let pending=LS.get('pe_pending',[]);    // [{id,ms}]
+let gasUrl=LS.get('pe_gas','');
+$('event').value=LS.get('pe_event','50m走');
+
+let t0=0,running=false,raf=0;
+const pad=(n,l=2)=>String(n).padStart(l,'0');
+function fmt(ms,d=3){
+  const m=Math.floor(ms/60000),s=Math.floor(ms%60000/1000);
+  let f=Math.floor(ms%1000);
+  f=d===3?pad(f,3):pad(Math.floor(f/10),2);
+  return m+':'+pad(s)+'.'+f;
+}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),1800)}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---- timer ---- */
+function tick(){$('timer').textContent=fmt(performance.now()-t0);raf=requestAnimationFrame(tick)}
+function start(){
+  if(running)return;
+  running=true;t0=performance.now();
+  $('timer').classList.add('run');$('goal').disabled=false;$('start').disabled=true;
+  tick();
+}
+function reset(){
+  cancelAnimationFrame(raf);running=false;
+  $('timer').textContent='0:00.000';$('timer').classList.remove('run');
+  $('goal').disabled=true;$('start').disabled=false;
+}
+function goal(){
+  if(!running)return;
+  const ms=performance.now()-t0;
+  pending.push({id:Date.now()+'-'+Math.random().toString(36).slice(2,6),ms});
+  LS.set('pe_pending',pending);renderPending();
+}
+$('start').onclick=start;
+$('reset').onclick=reset;
+$('goal').addEventListener('pointerdown',e=>{e.preventDefault();goal()});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)){e.preventDefault();running?goal():start()}
+});
+
+/* ---- pending ---- */
+function options(){
+  return '<option value="">出席番号・名前を選択</option>'+roster.map((r,i)=>`<option value="${i}">${esc(r.no)}　${esc(r.name)}</option>`).join('');
+}
+function renderPending(){
+  const box=$('pending');
+  if(!pending.length){box.innerHTML='<div class="empty">ゴールをタップすると、ここにタイムが並びます</div>';return}
+  box.innerHTML=pending.map(p=>`<div class="pi" data-id="${p.id}">
+    <div class="t">${fmt(p.ms,2)}</div>
+    <select>${options()}</select>
+    <button class="reg">登録</button>
+    <button class="x" title="削除" aria-label="このタイムを削除">×</button></div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+$('pending').addEventListener('click',e=>{
+  const row=e.target.closest('.pi');if(!row)return;
+  const p=pending.find(x=>x.id===row.dataset.id);if(!p)return;
+  if(e.target.classList.contains('x')){
+    pending=pending.filter(x=>x!==p);LS.set('pe_pending',pending);renderPending();return;
+  }
+  if(e.target.classList.contains('reg')){
+    const sel=row.querySelector('select');
+    if(sel.value===''){toast(roster.length?'児童を選んでください':'先に名簿を登録してください');return}
+    const r=roster[+sel.value];
+    const d=new Date();
+    const rec={id:p.id,date:(d.getMonth()+1)+'/'+d.getDate(),event:$('event').value.trim()||'未設定',no:r.no,name:r.name,time:fmt(p.ms,2)};
+    records.push(rec);LS.set('pe_records',records);
+    pending=pending.filter(x=>x!==p);LS.set('pe_pending',pending);
+    renderPending();renderRecords();
+    send(rec);
+  }
+});
+
+/* ---- records ---- */
+function renderRecords(){
+  $('cnt').textContent=records.length;
+  if(!records.length){$('list').innerHTML='<div class="empty">まだ記録がありません</div>';return}
+  $('list').innerHTML='<table><thead><tr><th>日時</th><th>種目</th><th>番号</th><th>児童名</th><th>タイム</th><th></th></tr></thead><tbody>'+
+    records.slice().reverse().map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.event)}</td><td>${esc(r.no)}</td><td>${esc(r.name)}</td><td class="tm">${esc(r.time)}</td><td><button data-id="${r.id}" aria-label="削除">×</button></td></tr>`).join('')+'</tbody></table>';
+}
+$('list').addEventListener('click',e=>{
+  const id=e.target.dataset&&e.target.dataset.id;if(!id)return;
+  if(!confirm('この記録を削除しますか？（スプレッドシート側は消えません）'))return;
+  records=records.filter(r=>r.id!==id);LS.set('pe_records',records);renderRecords();
+});
+$('clear').onclick=()=>{
+  if(!records.length)return;
+  if(confirm('この端末の全記録を消去します。よろしいですか？')){records=[];LS.set('pe_records',records);renderRecords()}
+};
+$('copy').onclick=async()=>{
+  if(!records.length){toast('コピーする記録がありません');return}
+  const tsv=records.map(r=>[r.date,r.event,r.no,r.name,r.time].join('\t')).join('\n');
+  try{await navigator.clipboard.writeText(tsv)}
+  catch(e){
+    const ta=document.createElement('textarea');ta.value=tsv;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy')}catch(_){toast('コピーに失敗しました');ta.remove();return}
+    ta.remove();
+  }
+  toast(records.length+'件をコピーしました（貼り付けできます）');
+};
+
+/* ---- GAS ---- */
+function setSync(msg,cls){const s=$('sync');s.textContent=msg;s.className=cls||''}
+async function send(appData){
+  if(!gasUrl){setSync('この端末に保存済み（GAS未設定）');return}
+  try{
+    setSync('送信中…');
+    await fetch(gasUrl+'?data='+encodeURIComponent(JSON.stringify(appData)),{method:'GET',mode:'no-cors'});
+    setSync('送信しました','ok');
+  }catch(err){
+    console.error(err);
+    setSync('送信失敗（この端末には保存済み）','ng');
+  }
+}
+
+/* ---- modals ---- */
+const open=id=>$(id).classList.add('on'),close=id=>$(id).classList.remove('on');
+$('bRoster').onclick=()=>{$('rosterText').value=roster.map(r=>r.no+' '+r.name).join('\n');open('mRoster')};
+$('rCancel').onclick=()=>close('mRoster');
+$('rSave').onclick=()=>{
+  roster=$('rosterText').value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const m=l.match(/^(\S+?)[\s,，、\t]+(.+)$/);
+    return m?{no:m[1],name:m[2].trim()}:null;
+  }).filter(Boolean);
+  LS.set('pe_roster',roster);renderPending();close('mRoster');toast(roster.length+'名を登録しました');
+};
+$('bGas').onclick=()=>{$('gasUrl').value=gasUrl;open('mGas')};
+$('gCancel').onclick=()=>close('mGas');
+$('gSave').onclick=()=>{
+  gasUrl=$('gasUrl').value.trim();LS.set('pe_gas',gasUrl);close('mGas');
+  setSync(gasUrl?'GAS設定済み':'この端末に保存（GAS未設定）');toast('保存しました');
+};
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('pointerdown',e=>{if(e.target===m)m.classList.remove('on')}));
+$('event').addEventListener('input',()=>LS.set('pe_event',$('event').value));
+
+/* ---- init ---- */
+setSync(gasUrl?'GAS設定済み':'GAS未設定');
+renderPending();renderRecords();
+})();
+</script>
+</body>
+</html>
